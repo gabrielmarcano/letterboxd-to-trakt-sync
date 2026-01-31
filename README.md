@@ -107,7 +107,7 @@ python3 run.py --sync clean
 
 You will be asked to type `DELETE_EVERYTHING` to confirm.
 
-### 3. Environment Variables
+### 5. Environment Variables
 
 To avoid passing credentials every time, you can set environment variables:
 

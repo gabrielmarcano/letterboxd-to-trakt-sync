@@ -43,7 +43,7 @@ def main():
     parser.add_argument("--client-secret", help="Trakt Client Secret")
     parser.add_argument("--data-dir", help="Path to Letterboxd export directory")
     parser.add_argument("--sync", choices=['watchlist', 'ratings', 'watched', 'likes', 'all', 'clean'], default='all', help="What to sync (or clean)")
-    parser.add_argument("--list-name", help="Name of the Trakt list for Likes", default="Favorites")
+    parser.add_argument("--list-name", help="Name of the Trakt list for Likes")
     parser.add_argument("--no-input", action="store_true", help="Disable interactive prompts")
     
     args = parser.parse_args()
@@ -148,6 +148,9 @@ def main():
         target_list_name = args.list_name
         if not args.no_input and not args.list_name:
              target_list_name = get_input("Trakt List Name to delete", "Favorites")
+        
+        if not target_list_name:
+             target_list_name = "Favorites"
              
         target_list = next((l for l in user_lists if l['name'] == target_list_name), None)
         if target_list:
@@ -174,8 +177,11 @@ def main():
 
     # 5. Likes List Name
     list_name = args.list_name
-    if args.sync in ['likes', 'all'] and not args.no_input and not args.list_name:
-        list_name = get_input("Trakt List Name for Likes", "Favorites")
+    if args.sync in ['likes', 'all']:
+        if not list_name and not args.no_input:
+            list_name = get_input("Trakt List Name for Likes", "Favorites")
+        if not list_name:
+            list_name = "Favorites"
 
     # Execution
     if args.sync in ['watchlist', 'all']:
