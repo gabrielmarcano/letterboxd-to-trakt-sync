@@ -113,3 +113,76 @@ class TraktAPI:
             }
             print(f"Syncing {list_name} chunk {i//chunk_size + 1}...")
             self._post(f"/users/me/lists/{list_id}/items", payload)
+
+    # Retrieval Methods
+    def get_watchlist(self):
+        return self._get(f"/sync/watchlist")
+
+    def get_ratings(self):
+        return self._get(f"/sync/ratings")
+        
+    def get_history(self):
+        # History can be huge, pagination might be needed. 
+        # For now, let's grab a large limit.
+        return self._get(f"/sync/history?limit=10000") 
+
+    # Removal Methods
+    def _prepare_remove_payload(self, items: List[Dict]) -> Dict[str, List[Dict]]:
+        payload = {"movies": [], "shows": [], "episodes": []}
+        for item in items:
+            media_type = item.get("type")
+            if media_type == "movie" and "movie" in item:
+                payload["movies"].append({"ids": item["movie"]["ids"]})
+            elif media_type == "show" and "show" in item:
+                payload["shows"].append({"ids": item["show"]["ids"]})
+            elif media_type == "episode" and "episode" in item:
+                payload["episodes"].append({"ids": item["episode"]["ids"]})
+            elif media_type == "season" and "season" in item:
+                 # Trakt API also supports seasons
+                 if "seasons" not in payload: payload["seasons"] = []
+                 payload["seasons"].append({"ids": item["season"]["ids"]})
+            # Handle cases where type might be missing but keys exist
+            elif "movie" in item:
+                payload["movies"].append({"ids": item["movie"]["ids"]})
+            elif "show" in item:
+                payload["shows"].append({"ids": item["show"]["ids"]})
+            elif "episode" in item:
+                payload["episodes"].append({"ids": item["episode"]["ids"]})
+        return payload
+
+    def remove_from_watchlist(self, items: List[Dict]):
+        chunk_size = 100
+        for i in range(0, len(items), chunk_size):
+            chunk = items[i:i + chunk_size]
+            payload = self._prepare_remove_payload(chunk)
+            if not any(payload.values()): continue
+            
+            print(f"Removing watchlist chunk {i//chunk_size + 1}...")
+            self._post("/sync/watchlist/remove", payload)
+
+    def remove_ratings(self, items: List[Dict]):
+        chunk_size = 100
+        for i in range(0, len(items), chunk_size):
+            chunk = items[i:i + chunk_size]
+            payload = self._prepare_remove_payload(chunk)
+            if not any(payload.values()): continue
+            
+            print(f"Removing ratings chunk {i//chunk_size + 1}...")
+            self._post("/sync/ratings/remove", payload)
+
+    def remove_history(self, items: List[Dict]):
+        chunk_size = 100
+        for i in range(0, len(items), chunk_size):
+            chunk = items[i:i + chunk_size]
+            payload = self._prepare_remove_payload(chunk)
+            if not any(payload.values()): continue
+
+            print(f"Removing history chunk {i//chunk_size + 1}...")
+            self._post("/sync/history/remove", payload)
+
+    def delete_list(self, list_id: str):
+        response = requests.delete(f"{self.base_url}/users/me/lists/{list_id}", headers=self.headers)
+        if response.status_code == 204:
+            print(f"List {list_id} deleted.")
+        else:
+            print(f"Failed to delete list {list_id}: {response.status_code}")

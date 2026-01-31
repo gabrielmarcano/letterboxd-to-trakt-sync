@@ -26,13 +26,12 @@ def main():
     parser.add_argument("--client-id", help="Trakt Client ID")
     parser.add_argument("--client-secret", help="Trakt Client Secret")
     parser.add_argument("--data-dir", help="Path to Letterboxd export directory")
-    parser.add_argument("--sync", choices=['watchlist', 'ratings', 'watched', 'likes', 'all'], default='all', help="What to sync")
+    parser.add_argument("--sync", choices=['watchlist', 'ratings', 'watched', 'likes', 'all', 'clean'], default='all', help="What to sync (or clean)")
     parser.add_argument("--list-name", help="Name of the Trakt list for Likes", default="Favorites")
     parser.add_argument("--no-input", action="store_true", help="Disable interactive prompts")
     
     args = parser.parse_args()
-    
-    # 1. Credentials
+
     # 1. Credentials
     c_id = args.client_id or os.environ.get("TRAKT_CLIENT_ID")
     c_secret = args.client_secret or os.environ.get("TRAKT_CLIENT_SECRET")
@@ -56,8 +55,68 @@ def main():
         return
         
     api = TraktAPI(token, c_id)
-    
-    # 3. Data Directory
+
+    # 3. Clean Account
+    if args.sync == 'clean':
+        print("\n!!! WARNING: YOU ARE ABOUT TO DELETE DATA FROM YOUR TRAKT ACCOUNT !!!")
+        print("This will remove all items from your Watchlist, Ratings, Watched History, and the Favorites list.")
+        
+        if not args.no_input:
+            confirmation = get_input("Type 'DELETE_EVERYTHING' to confirm")
+            if confirmation != "DELETE_EVERYTHING":
+                print("Confirmation failed. Aborting.")
+                return
+        
+        print("Proceeding with account cleanup...")
+        
+        # 1. Watchlist
+        print("Fetching Watchlist...")
+        watchlist = api.get_watchlist()
+        if watchlist:
+            print(f"Found {len(watchlist)} items in Watchlist. removing...")
+            api.remove_from_watchlist(watchlist)
+        else:
+            print("Watchlist is empty.")
+            
+        # 2. Ratings
+        print("Fetching Ratings...")
+        ratings = api.get_ratings()
+        if ratings:
+            print(f"Found {len(ratings)} ratings. removing...")
+            api.remove_ratings(ratings)
+        else:
+            print("No ratings found.")
+            
+        # 3. History
+        print("Fetching History...")
+        history = api.get_history()
+        # History is a list of objects, we need to handle pagination potentially, 
+        # but for now we rely on the large limit.
+        if history:
+            print(f"Found {len(history)} history items. removing...")
+            api.remove_history(history)
+        else:
+            print("No history found.")
+            
+        # 4. Lists (Favorites)
+        # Ask for list name again or iterate all? Let's just do Favorites for now as per plan.
+        # But maybe we should search for the list by name?
+        user_lists = api.get_user_lists()
+        target_list_name = args.list_name
+        if not args.no_input and not args.list_name:
+             target_list_name = get_input("Trakt List Name to delete", "Favorites")
+             
+        target_list = next((l for l in user_lists if l['name'] == target_list_name), None)
+        if target_list:
+             print(f"Deleting list '{target_list_name}'...")
+             api.delete_list(target_list['ids']['trakt'])
+        else:
+             print(f"List '{target_list_name}' not found.")
+             
+        print("Cleanup complete.")
+        return
+
+    # 4. Data Directory
     data_dir = args.data_dir
     if not data_dir:
         default_dir = find_default_data_dir()
@@ -70,7 +129,7 @@ def main():
         print(f"Error: Data directory '{data_dir}' not found.")
         return
 
-    # 4. Likes List Name
+    # 5. Likes List Name
     list_name = args.list_name
     if args.sync in ['likes', 'all'] and not args.no_input and not args.list_name:
         list_name = get_input("Trakt List Name for Likes", "Favorites")

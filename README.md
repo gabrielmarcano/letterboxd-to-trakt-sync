@@ -12,6 +12,8 @@ History, and Likes) to Trakt.
   dates.
 - **Likes Sync**: Syncs your liked films to a custom Trakt list named
   "Favorites" (since Trakt doesn't have movie "likes").
+- **Account Cleaning**: Feature to remove all data from Trakt, useful for
+  restarting a sync.
 - **Interactive CLI**: Friendly prompts for credentials, paths, and preferences.
 - **Smart Auth**: Saves OAuth token locally so you only need to authenticate
   once.
@@ -93,6 +95,17 @@ python3 run.py --sync watched
 ```bash
 python3 run.py --sync likes
 ```
+
+### 4. Clean Account
+
+⚠️ **WARNING**: This removes all Watchlist items, Ratings, Watched History, and
+the Favorites list from your Trakt account.
+
+```bash
+python3 run.py --sync clean
+```
+
+You will be asked to type `DELETE_EVERYTHING` to confirm.
 
 ### 3. Environment Variables
 
