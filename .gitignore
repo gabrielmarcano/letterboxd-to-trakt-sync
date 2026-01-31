@@ -1,0 +1,14 @@
+# Python
+__pycache__
+*.pyc
+
+# Operating System
+.DS_Store
+
+# Environments & Secrets
+.env
+token.json
+
+# Project Data
+letterboxd-*
+trakt.apib
