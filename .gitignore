@@ -8,6 +8,7 @@ __pycache__
 # Environments & Secrets
 .env
 token.json
+credentials.json
 
 # Project Data
 letterboxd-*

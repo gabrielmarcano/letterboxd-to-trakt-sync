@@ -1,5 +1,6 @@
 import argparse
 import os
+import json
 from .auth import authenticate
 from .api import TraktAPI
 from .parser import parse_csv
@@ -21,6 +22,21 @@ def get_input(prompt, default=None):
     else:
         return input(f"{prompt}: ").strip()
 
+CREDENTIALS_FILE = "credentials.json"
+
+def load_credentials():
+    if os.path.exists(CREDENTIALS_FILE):
+        try:
+            with open(CREDENTIALS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return None
+    return None
+
+def save_credentials(client_id, client_secret):
+    with open(CREDENTIALS_FILE, 'w') as f:
+        json.dump({"client_id": client_id, "client_secret": client_secret}, f)
+
 def main():
     parser = argparse.ArgumentParser(description="Sync Letterboxd export to Trakt")
     parser.add_argument("--client-id", help="Trakt Client ID")
@@ -36,6 +52,26 @@ def main():
     c_id = args.client_id or os.environ.get("TRAKT_CLIENT_ID")
     c_secret = args.client_secret or os.environ.get("TRAKT_CLIENT_SECRET")
     
+    # Try loading from file if not provided
+    if not c_id: 
+        saved_creds = load_credentials()
+        if saved_creds:
+            if not args.no_input:
+                use_saved = get_input("Found saved credentials. Use them? [Y/n]", "Y")
+                if use_saved.lower() == 'y':
+                    c_id = saved_creds.get("client_id")
+                    c_secret = saved_creds.get("client_secret")
+                else:
+                    # User explicitly said no, maybe we should delete them? 
+                    # The prompt implied "deleting cache", so let's delete if they say no.
+                    if os.path.exists(CREDENTIALS_FILE):
+                        os.remove(CREDENTIALS_FILE)
+                        print("Saved credentials deleted.")
+            else:
+                 # In non-interactive mode, use them if available and no args provided
+                 c_id = saved_creds.get("client_id")
+                 c_secret = saved_creds.get("client_secret")
+
     if not args.no_input:
         if not c_id:
             c_id = get_input("Trakt Client ID")
@@ -45,6 +81,13 @@ def main():
     if not c_id or not c_secret:
         print("Error: Client ID and Secret are required.")
         return
+        
+    # Save credentials if they work? Or just save them now? 
+    # Let's save them now. Validating them happens during auth.
+    if not args.no_input: # Only save if we are in interactive mode (presumably)
+        # Check if we should save. If we just loaded them, no need to re-save.
+        # But simple logic: just save.
+        save_credentials(c_id, c_secret)
 
     # 2. Authentication
     print("Authenticating...")
